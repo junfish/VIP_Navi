@@ -1,1 +1,1 @@
-{"loss/overall_loss": 346.7745666503906, "step": 361, "_timestamp": 1713819951.424099, "_runtime": 153.3870289325714, "_step": 1809, "loss/position_loss": 335.0174560546875, "loss/rotation_loss": 1.154731273651123, "param/sx": 0.023346299305558205, "param/sq": -2.9665842056274414}
+{"loss/overall_loss": 127.83493041992188, "step": 1812, "_timestamp": 1713820541.0079067, "_runtime": 742.9708366394043, "_step": 9064, "loss/position_loss": 125.74702453613281, "loss/rotation_loss": 0.864546537399292, "param/sx": 0.08126416802406311, "param/sq": -2.8300771713256836}

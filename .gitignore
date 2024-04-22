@@ -4,3 +4,4 @@ runs/
 models*/
 summary*/
 test_*/
+wandb/
