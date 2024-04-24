@@ -28,7 +28,7 @@ class CustomDataset(Dataset):
 
         # print(self.lines.__len__())
         print("An example of a single line of %s data appears: " % self.mode)
-        print(self.lines[1])
+        print(self.lines[0])
 
         self.test_filenames = []
         self.test_poses = []
@@ -37,7 +37,7 @@ class CustomDataset(Dataset):
 
         for i, line in enumerate(self.lines):
             splits = line.split()
-            filename = splits[1].replace(",", "")
+            filename = splits[0].replace(",", "")
             values = splits[2:]
             values = list(map(lambda x: float(x.replace(",", "")), values))
             filename = os.path.join(self.proj_path, filename)
@@ -91,7 +91,7 @@ class COLMAPDataset(Dataset):
 
         # print(self.lines.__len__())
         # print("An example of a single line of %s data appears: " % self.mode)
-        # print(self.lines[1])
+        # print(self.lines[0])
 
         # self.test_filenames = []
         # self.test_poses = []
@@ -104,7 +104,7 @@ class COLMAPDataset(Dataset):
 
         for i, line in enumerate(self.lines):
             splits = line.split()
-            filename = splits[1].replace(",", "")
+            filename = splits[0].replace(",", "")
             values = splits[2:]
             values = list(map(lambda x: float(x.replace(",", "")), values))
             filename = os.path.join(self.proj_path, filename)
@@ -192,10 +192,10 @@ def get_loader(model, proj_path, metadata_path, mode, batch_size, is_shuffle=Fal
 
     return data_loaders
 
-cameras, images, point3D = read_model('/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Localization/data/HST_video/Jun/Floor_3/20240215_203732_proj/sparse/geo')
-img2id = {image.name: i for i, image in images.items()}
-scene_coordinates = torch.zeros(max(point3D.keys()) + 1, 3, dtype = torch.float64)
-for i, point3D in point3D.items():
-    scene_coordinates[i] = torch.tensor(point3D.xyz)
-pass
-print('!')
+# cameras, images, point3D = read_model('/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Localization/data/HST_video/Jun/Floor_3/20240215_203732_proj/sparse/geo')
+# img2id = {image.name: i for i, image in images.items()}
+# scene_coordinates = torch.zeros(max(point3D.keys()) + 1, 3, dtype = torch.float64)
+# for i, point3D in point3D.items():
+#     scene_coordinates[i] = torch.tensor(point3D.xyz)
+# pass
+# print('!')

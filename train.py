@@ -16,7 +16,11 @@ def main(config):
     elif config.mode == 'test':
         solver.test()
 
-# python train.py --bayesian True --learn_beta False --dropout_rate 0.5 --model Resnet34
+# python train.py --model Resnet34 --bayesian True --dropout_rate 0.5
+# python train.py --model MobilenetV3 --bayesian True --dropout_rate 0.5
+
+# python train.py --model Resnet34 --sx 0 --sq -5 --bayesian False --dropout_rate 0.0 --learn_beta True
+# python train.py --model MobilenetV3 --sx 0 --sq -5 --bayesian False --dropout_rate 0.0 --learn_beta True
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
@@ -37,7 +41,7 @@ if __name__ == '__main__':
 
     # parser.add_argument('--proj_path', type=str, default='/mnt/data2/image_based_localization/posenet/Street')
     # parser.add_argument('--proj_path', type = str, default='/mnt/data2/NCLT')
-    parser.add_argument('--proj_path', type=str, default='/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Localization/data/HST_video/Jun/Basement')
+    parser.add_argument('--proj_path', type=str, default='/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Localization/data/HST_video/Jun/Lower_Floor')
     # Basement
     # Lower_Floor
     # Floor_3
@@ -46,11 +50,11 @@ if __name__ == '__main__':
     # parser.add_argument('--metadata_path', type=str, default='/mnt/data2/image_based_localization/posenet/Street/dataset_train.txt')
     # parser.add_argument('--metadata_path', type=str, default='/mnt/data2/NCLT/train_1m.txt')
     # parser.add_argument('--metadata_path', type=str, default='/mnt/data2/complex_urban/urban08/image_convert/train.txt')
-    parser.add_argument('--metadata_path', type=str, default='/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Localization/data/HST_video/Jun/Basement/image_train_all.txt')
+    parser.add_argument('--metadata_path', type=str, default='/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Localization/data/HST_video/Jun/Lower_Floor/image_train_all.txt')
     # Lower_Floor/image_train_80.txt
 
     # Training settings
-    parser.add_argument('--gpu_ids', type=str, default='0', help='gpu ids: e.g. 0 1 2 3') # selection of gpu id (single gpu)
+    parser.add_argument('--gpu_ids', type=str, default='1', help='gpu ids: e.g. 0 1 2 3') # selection of gpu id (single gpu)
     # parser.add_argument('--dataset', type=str, default='Oxford', choices=['NCLT', 'VKITTI', 'Oxford', 'QUT'])
     parser.add_argument('--num_epochs', type=int, default=300)
     parser.add_argument('--num_epochs_decay', type=int, default=50)

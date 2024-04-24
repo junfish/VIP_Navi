@@ -42,8 +42,7 @@ def rotation_dist(pred, target):
 
 def quat_dist(pred, target):
     # https://math.stackexchange.com/questions/3028462/rotation-distance
-    return 2 * np.arccos(np.abs(np.sum(pred * target)))
-
+    return 2 * np.arccos(np.clip(np.abs(np.sum(pred * target)), 0, 1))
 
 def fit_gaussian(pose_quat):
     # pose_quat = pose_quat.detach().cpu().numpy()
