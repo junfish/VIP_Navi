@@ -5,8 +5,8 @@ import os
 
 # The below code selects the appropriate directory path for the project to write the pixel coordinates to the geo_coord text file.
 # ../../data/HST_video/Jun/Floor_3/20*
-folder_path = sorted(glob.glob("../../data/HST_video/Jun/Floor_3/20*"))
-current_project_path = folder_path[74:75]
+folder_path = sorted(glob.glob("/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Localization/data/HST_video/Jun/Floor_2/20*"))
+current_project_path = folder_path[77:78]
 project_path = current_project_path[0]
 dir_paths = glob.glob(os.path.join(project_path, 'DJI_20*')) + glob.glob(os.path.join(project_path, 'HAND_20*'))
 dir_paths = [path for path in dir_paths if os.path.isdir(path)]
@@ -21,7 +21,7 @@ def draw_circle(event,x,y,flags,param):
 # /Users/jasonyu/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Floor Plan/crop_LOWER-LEVEL_low.jpeg
 # crop_BASEMENT_low.jpeg
 # crop_LEVEL-ONE_low.jpeg
-img = cv2.imread('/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Floor Plan/crop_LEVEL-TWO_low.jpeg')
+img = cv2.imread('/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Floor Plan/crop_LEVEL-ONE_low.jpeg')
 # img = np.zeros((512,512,3), np.uint8)
 cv2.namedWindow('image')
 

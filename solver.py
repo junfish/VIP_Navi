@@ -1,4 +1,5 @@
 import os
+import pdb
 import time
 import numpy as np
 import torch
@@ -8,7 +9,7 @@ from torch.optim import lr_scheduler
 from tensorboardX import SummaryWriter
 import wandb
 from model import model_parser
-from model import PoseLoss
+from model import PoseLoss, GeometricLoss
 from pose_utils import *
 import datetime
 
@@ -28,9 +29,12 @@ class Solver():
         self.model = model_parser(self.config.model, self.config.fixed_weight, self.config.dropout_rate,
                                   self.config.bayesian)
 
-        self.criterion = PoseLoss(self.device, self.config.sx, self.config.sq, self.config.learn_beta)
+        if self.config.geometric:
+            self.criterion = GeometricLoss(self.device)
+        else:
+            self.criterion = PoseLoss(self.device, self.config.sx, self.config.sq, self.config.learn_beta)
 
-        self.print_network(self.model, self.config.model)
+        # self.print_network(self.model, self.config.model)
         self.model_name = self.config.model
         self.data_name = self.config.proj_path.split('/')[-1]
         if self.config.mode == 'train':
@@ -162,43 +166,40 @@ class Solver():
 
                 data_loader = self.data_loader[phase]
 
-                for i, (inputs, poses) in enumerate(data_loader):
-
+                for i, batch in enumerate(data_loader):
+                    inputs = batch['image']
                     inputs = inputs.to(self.device)
-                    poses = poses.to(self.device)
 
                     # Zero the parameter gradient
                     optimizer.zero_grad()
 
                     # forward
                     pos_out, ori_out, _ = self.model(inputs)
-
+                    ori_out = F.normalize(ori_out, p=2, dim=1)
                     # pos_true = poses[:, :3]
                     # ori_true = poses[:, 3:]
-                    pos_true = poses[:, 4:]
-                    ori_true = poses[:, :4]
+                    if self.config.geometric:
+                        w_t_c, c_q_w, w_P, c_R_w = batch['w_t_c'], batch['c_q_w'], batch['w_P'], batch['c_R_w']
+                        # c_q_w[:, 1:] *= -1
+                        w_t_c, c_q_w, c_R_w = w_t_c.to(self.device), c_q_w.to(self.device), c_R_w.to(self.device)
+                        w_P = [w_P_item.to(self.device) for w_P_item in w_P]
 
-                    ori_out = F.normalize(ori_out, p=2, dim=1)
-                    ori_true = F.normalize(ori_true, p=2, dim=1)
+                        loss, _, _ = self.criterion(pos_out, ori_out, w_t_c, c_q_w, c_R_w, w_P)
+                        loss_print = self.criterion.loss_print[0]
+                        loss_pos_print = self.criterion.loss_print[1]
+                        loss_ori_print = self.criterion.loss_print[2]
 
-                    loss, _, _ = self.criterion(pos_out, ori_out, pos_true, ori_true)
-                    loss_print = self.criterion.loss_print[0]
-                    loss_pos_print = self.criterion.loss_print[1]
-                    loss_ori_print = self.criterion.loss_print[2]
+                    else:
+                        poses = batch['pose']
+                        poses = poses.to(self.device)
+                        pos_true = poses[:, 4:]
+                        ori_true = poses[:, :4]
 
-                    # loss_pos = F.mse_loss(pos_out, pos_true)
-                    # loss_ori = F.mse_loss(ori_out, ori_true)
-
-                    # loss_pos = F.l1_loss(pos_out, pos_true)
-                    # loss_ori = F.l1_loss(ori_out, ori_true)
-                    # loss_pos = self.loss_func(pos_out, pos_true)
-                    # loss_ori = self.loss_func(ori_out, ori_true)
-
-                    # loss = loss_pos + beta * loss_ori
-
-                    # loss_print = loss.item()
-                    # loss_ori_print = loss_ori.item()
-                    # loss_pos_print = loss_pos.item()
+                        ori_true = F.normalize(ori_true, p=2, dim=1)
+                        loss, _, _ = self.criterion(pos_out, ori_out, pos_true, ori_true)
+                        loss_print = self.criterion.loss_print[0]
+                        loss_pos_print = self.criterion.loss_print[1]
+                        loss_ori_print = self.criterion.loss_print[2]
 
                     if use_tensorboard:
                         if phase == 'train':
@@ -329,12 +330,18 @@ class Solver():
                 # Note: Ensure scheduler.get_last_lr() gives the expected format. If it returns a list, you might want to access the first element using [0].
                 learning_rate = scheduler.get_last_lr()[0] if isinstance(scheduler.get_last_lr(),
                                                                          list) else scheduler.get_last_lr()
-                wandb.log({
-                    'learning_rate': learning_rate,
-                    'param/sx': self.criterion.sx.item(),
-                    'param/sq': self.criterion.sq.item(),
-                    'epoch': epoch
-                })
+                if self.config.geometric:
+                    wandb.log({
+                        'learning_rate': learning_rate,
+                        'epoch': epoch
+                    })
+                else:
+                    wandb.log({
+                        'learning_rate': learning_rate,
+                        'param/sx': self.criterion.sx.item(),
+                        'param/sq': self.criterion.sq.item(),
+                        'epoch': epoch
+                    })
 
 
         time_elapsed = time.time() - since
@@ -379,9 +386,9 @@ class Solver():
 
         num_data = len(self.data_loader)
 
-        for i, (inputs, poses) in enumerate(self.data_loader):
+        for i, batch in enumerate(self.data_loader):
             print(i)
-
+            inputs = batch['image']
             inputs = inputs.to(self.device)
 
             # forward
@@ -412,11 +419,16 @@ class Solver():
                 # print('pos out', pos_out)
                 # print('ori_out', ori_out)
             #
-            # pos_true = poses[:, :3].squeeze(0).numpy()
-            # ori_true = poses[:, 3:].squeeze(0).numpy()
+            # pos_true = data[:, :3].squeeze(0).numpy()
+            # ori_true = data[:, 3:].squeeze(0).numpy()
+            if self.config.geometric:
+                pos_true, ori_true = batch['w_t_c'].squeeze(0).numpy(), batch['c_q_w'].squeeze(0).numpy()
+                ori_true[1:] *= -1
 
-            pos_true = poses[:, 4:].squeeze(0).numpy()
-            ori_true = poses[:, :4].squeeze(0).numpy()
+            else:
+                poses = batch['pose']
+                pos_true = poses[:, 4:].squeeze(0).numpy()
+                ori_true = poses[:, :4].squeeze(0).numpy()
 
             # ori_true = quat_to_euler(ori_true)
             # print('pos true', pos_true)

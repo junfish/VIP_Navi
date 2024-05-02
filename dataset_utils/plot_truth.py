@@ -84,17 +84,17 @@ if __name__ == "__main__":
     # crop_LOWER-LEVEL_low.jpeg
     # crop_LEVEL-ONE_low.jpeg
     # crop_LEVEL-TWO_low.jpeg
-    img = cv2.imread('/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Floor Plan/crop_LEVEL-TWO_low.jpeg')
+    img = cv2.imread('/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Floor Plan/crop_LEVEL-ONE_low.jpeg')
     r = 3
     ### BGR
     color = (255, 133, 233)
     # (133, 173, 235) # orange
     # (149, 228, 177) # green
     # (255, 133, 233) # purple
-    folder_path = sorted(glob.glob("../../data/HST_video/Jun/Floor_3/20*"))
+    folder_path = sorted(glob.glob("/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Localization/data/HST_video/Jun/Floor_2/20*"))
     alpha = 0.5 # Transparency factor.
     all_image_num = 0
-    for proj_path in folder_path[74:75]:
+    for proj_path in folder_path[77:78]:
         overlay = img.copy()
         cam2world_lines = open(os.path.join(proj_path, "camera2world_6DoF.txt"), 'r').readlines()
         print("%3.0f images are annotated in this project." % (len(cam2world_lines) - 1))

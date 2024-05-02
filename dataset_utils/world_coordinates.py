@@ -68,15 +68,15 @@ def plot3d(x_list, y_list, z_list, q_list, dest_dir):
     ax.set_xlim([0, 1200])
     ax.set_ylim([0, 2600])
     ax.set_zlim([-40, 100])
-    plt.show()
-    # plt.savefig(os.path.join(dest_dir, 'path_stem.png'))
+    # plt.show()
+    plt.savefig(os.path.join(dest_dir, 'path_stem.png'))
 
 
 if __name__ == "__main__":
 
     folder_path = sorted(glob.glob("/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Localization/data/HST_video/Jun/Basement/20*")) # read and sort all colmap projects (e.g., ./Basement/20231220_141254_proj)
 
-    for proj_path in folder_path[0:1]: # for-loop all colmap projects
+    for proj_path in folder_path[77:78]: # for-loop all colmap projects
         proj_name = proj_path.split('/')[-1] # obtain the folder name, e.g., 20231220_141254_proj
         file2read = open(os.path.join(proj_path, "images.txt"), 'r') # read the image.txt (easily exported as txt by colmap)
         # For tidy publishing purposes, the file image.txt has been relocated to the directory 20231220_141254_proj/sparse/geo/images.txt. Please remember to change the file path to your own directory.
@@ -94,6 +94,8 @@ if __name__ == "__main__":
                 image_folder_name = "_".join(NAME.split('_')[:3])
                 img_id = int(IMAGE_ID)
                 qw, qx, qy, qz, tx, ty, tz = float(QW), float(QX), float(QY), float(QZ), float(TX), float(TY), float(TZ)
+                if qw < 0:
+                    qw, qx, qy, qz = -qw, -qx, -qy, -qz
                 cam_id = int(CAMERA_ID)
                 # calculate the actual coordinates
                 R_matrix = quaternion_R_matrix([qw, qx, qy, qz])
