@@ -45,7 +45,7 @@ if __name__ == '__main__':
     parser.add_argument('--dropout_rate', type=float, default=0.0, help='range 0.0 to 1.0')
     parser.add_argument('--shuffle', type=bool, default=True)
     parser.add_argument('--fixed_weight', type=bool, default=False)
-    parser.add_argument('--model', type=str, default='Resnet50', choices=['Googlenet', 'Resnet', 'Resnet34', 'Resnet50', 'Resnet101', 'Renet34Simple', 'MobilenetV3', 'Resnet34lstm'])
+    parser.add_argument('--model', type=str, default='Resnet50', choices=['Googlenet', 'Resnet', 'Resnet34', 'Resnet50', 'Resnet101', 'Renet34Simple', 'MobilenetV3', 'Resnet34lstm', 'MobilenetV3lstm', 'Resnet34hourglass', "MobilenetV3hourglass"])
     parser.add_argument('--pretrained_model', type=str, default=None)
 
     # parser.add_argument('--proj_path', type=str, default='/mnt/data2/image_based_localization/posenet/Street')

@@ -94,7 +94,8 @@ if __name__ == "__main__":
     folder_path = sorted(glob.glob("/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Localization/data/HST_video/Jun/Floor_2/20*"))
     alpha = 0.5 # Transparency factor.
     all_image_num = 0
-    for proj_path in folder_path[77:78]:
+    for proj_path in folder_path[0:78]:
+        print(f"Working at {proj_path}...")
         overlay = img.copy()
         cam2world_lines = open(os.path.join(proj_path, "camera2world_6DoF.txt"), 'r').readlines()
         print("%3.0f images are annotated in this project." % (len(cam2world_lines) - 1))

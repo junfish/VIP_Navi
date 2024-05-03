@@ -165,7 +165,6 @@ class Solver():
                     self.model.eval()
 
                 data_loader = self.data_loader[phase]
-
                 for i, batch in enumerate(data_loader):
                     inputs = batch['image']
                     inputs = inputs.to(self.device)

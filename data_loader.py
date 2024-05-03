@@ -53,7 +53,7 @@ class CustomDataset(Dataset):
         self.lines = raw_lines[2:]
 
         # print(self.lines.__len__())
-        print("An example of a single line of %s data appears: " % self.mode)
+        print("An example of a single line of %s data appears (before shuffling): " % self.mode)
         print(self.lines[0])
 
         self.test_filenames = []
@@ -181,127 +181,6 @@ class GeometricDataset(Dataset):
             num_data = self.num_test
         return num_data
 
-'''
-class GeometricDataset(Dataset):
-    def __init__(self, proj_path, mode, transform, num_val=100):
-        self.proj_path = proj_path
-        self.train_test_split = train_test_split_dict[proj_path.split('/')[-1]]
-        self.mode = mode
-        if self.mode == "test":
-            self.colmap_folder_path = sorted(glob.glob(os.path.join(self.proj_path, "20*")))[self.train_test_split:]
-        elif self.mode in ["train", "val"]:
-            self.colmap_folder_path = sorted(glob.glob(os.path.join(self.proj_path, "20*")))[:self.train_test_split]
-
-        self.transform = transform
-
-        self.train_data = []
-        self.test_data = []
-
-        for proj_idx, colmap_proj_name in tqdm.tqdm(enumerate(self.colmap_folder_path)):
-            colmap_model_path = os.path.join(colmap_proj_name, "sparse", "geo")
-            image_folder_list = [d for d in os.listdir(colmap_proj_name) if
-                                 os.path.isdir(os.path.join(colmap_proj_name, d))
-                                 and d.startswith(('DJI_20', 'HAND_20'))]
-            image_folder = image_folder_list[0]
-            cameras, images, points3D = read_model(colmap_model_path)
-            scene_coordinates = torch.zeros(max(points3D.keys()) + 1, 3, dtype=torch.float64)
-
-            for i, point3D in points3D.items():
-                scene_coordinates[i] = torch.tensor(point3D.xyz)
-            for img_id, image in images.items():
-                im = cv2.imread(os.path.join(colmap_proj_name, image_folder, image.name))
-                camera = cameras[image.camera_id]
-                f, cx, cy, k = camera.params
-                K = np.array([
-                    [f, 0, cx],
-                    [0, f, cy],
-                    [0, 0, 1]
-                ])
-                dist_coeffs = np.array([k, 0, 0, 0, 0])
-                new_K, roi = cv2.getOptimalNewCameraMatrix(
-                    cameraMatrix=K,
-                    distCoeffs=dist_coeffs,
-                    imageSize=im.shape[:2][::-1],
-                    alpha=0,
-                    centerPrincipalPoint=True
-                )
-                new_K = torch.tensor(new_K)
-                new_K[0, 2] = camera.width / 2
-                new_K[1, 2] = camera.height / 2
-
-                c_t_w = torch.tensor(image.tvec).view(3, 1)  # world coordinate system on camera coordinate; x in Eq.(6)
-                c_q_w = torch.tensor(image.qvec)
-
-                if c_q_w[0] < 0:
-                    c_q_w *= -1
-
-                c_R_w = quaternion_to_rotation_matrix(c_q_w)  # same to R; R in Eq.(6)
-                # R = torch.tensor(quaternion_R_matrix(c_q_w), dtype=torch.float64)
-                w_t_c = -c_R_w.T @ c_t_w # camera coordinates on world coordinate system;
-
-                w_P = scene_coordinates[[i for i in image.point3D_ids if i != -1]]  # G in Eq.(7); of size (|G|, 3)
-                c_P = c_R_w @ (w_P.T - w_t_c)  # (R @ g + x) in Eq.(6)
-                c_p = new_K @ c_P  # Eq.(6) --> K @ (R @ g + x)
-                c_p = c_p[:2] / c_p[2]
-
-                if self.mode == 'train':
-                    self.train_data.append({
-                        'image_path': os.path.join(colmap_proj_name, image_folder, image.name),
-                        'w_t_c': w_t_c.float(),
-                        'c_q_w': c_q_w.float(),
-                        # 'c_R_w': c_R_w.float(),
-                        # 'K': new_K.float(),
-                        'w_P': w_P.float(),
-                        'c_p': c_p.T.float(),
-                    })
-                elif self.mode == 'test':
-                    self.test_data.append({
-                        'image_path': os.path.join(colmap_proj_name, image_folder, image.name),
-                        'w_t_c': w_t_c.float(),
-                        'c_q_w': c_q_w.float(),
-                        # 'c_R_w': c_R_w.float(),
-                        # 'K': new_K.float(),
-                        'w_P': w_P.float(),
-                        'c_p': c_p.T.float(),
-                    })
-                elif self.mode == 'val':
-                    self.test_data.append({
-                        'image_path': os.path.join(colmap_proj_name, image_folder, image.name),
-                        'w_t_c': w_t_c.float(),
-                        'c_q_w': c_q_w.float(),
-                        # 'c_R_w': c_R_w.float(),
-                        # 'K': new_K.float(),
-                        'w_P': w_P.float(),
-                        'c_p': c_p.T.float(),
-                        # 'xmin': depths[int(xmin_p * (depths.shape[0] - 1))].float(),
-                        # 'xmax': depths[int(xmax_p * (depths.shape[0] - 1))].float()
-                    })
-                    if i > num_val:
-                        break
-                else:
-                    assert 'Unavailable mode'
-
-        self.num_train = self.train_data.__len__()
-        self.num_test = self.test_data.__len__()
-        # print("Number of Train: ", self.num_train)
-        # print("Number of Test: ", self.num_test)
-    def __getitem__(self, index):
-        if self.mode == 'train':
-            image = Image.open(self.train_data[index]['image_path'])
-            geometric = self.train_data[index]
-        elif self.mode in ['val', 'test']:
-            image = Image.open(self.test_data[index]['image_path'])
-            geometric = self.test_data[index]
-
-        return self.transform(image), geometric
-
-    def __len__(self):
-        if self.mode == 'train':
-            num_data = self.num_train
-        elif self.mode in ['val', 'test']:
-            num_data = self.num_test
-        return num_data
-'''
 
 def get_loader(model, proj_path, metadata_path, mode, geometric, batch_size, is_shuffle=False, num_val=100):
 
@@ -309,7 +188,7 @@ def get_loader(model, proj_path, metadata_path, mode, geometric, batch_size, is_
     if model == 'Googlenet':
         img_size = 300
         img_crop = 299
-    elif model in ['Resnet', 'Resnet34', 'Resnet50', 'Resnet101', 'Resnet34Simple', 'MobilenetV3', 'Resnet34lstm']:
+    elif model in ['Resnet', 'Resnet34', 'Resnet50', 'Resnet101', 'Resnet34Simple', 'MobilenetV3', 'Resnet34lstm', 'MobilenetV3lstm', 'Resnet34hourglass', "MobilenetV3hourglass"]:
         img_size = 256
         img_crop = 224
 

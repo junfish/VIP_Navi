@@ -59,6 +59,22 @@ def model_parser(model, fixed_weight=False, dropout_rate=0.0, bayesian = False):
         base_model = models.resnet34(weights = weights)
         network = ResNet34LSTM(base_model, fixed_weight, 256, dropout_rate, bayesian)
 
+    elif model == 'MobilenetV3lstm':
+        weights = MobileNet_V3_Large_Weights.IMAGENET1K_V1
+        base_model = models.mobilenet_v3_large(weights=weights)
+        network = MobileNetV3LSTM(base_model, fixed_weight, 256, dropout_rate, bayesian)
+
+
+    elif model == 'Resnet34hourglass':
+        weights = ResNet34_Weights.IMAGENET1K_V1
+        base_model = models.resnet34(weights = weights)
+        network = ResNet34Hourglass(base_model, fixed_weight, True, dropout_rate, bayesian)
+
+    elif model == "MobilenetV3hourglass":
+        weights = MobileNet_V3_Large_Weights.IMAGENET1K_V1
+        base_model = models.mobilenet_v3_large(weights = weights)
+        network = MobileNetV3Hourglass(base_model, fixed_weight, True, dropout_rate, bayesian)
+
     else:
         assert False, 'Invalid Model'
 
@@ -351,10 +367,11 @@ class GoogleNet(nn.Module):
         if fixed_weight:
             for param in self.base_model.parameters():
                 param.requires_grad = False
+        # Out 1
 
         # Out 2
-        self.pos2 = nn.Linear(2048, 3, bias=True)
-        self.ori2 = nn.Linear(2048, 4, bias=True)
+        self.fc_position_2 = nn.Linear(2048, 3, bias=True)
+        self.fc_rotation_2 = nn.Linear(2048, 4, bias=True)
 
     def forward(self, x):
         # 299 x 299 x 3
@@ -366,8 +383,8 @@ class GoogleNet(nn.Module):
         # 1 x 1 x 2048
         x = x.view(x.size(0), -1)
         # 2048
-        pos = self.pos2(x)
-        ori = self.ori2(x)
+        pos = self.fc_position_2(x)
+        ori = self.fc_rotation_2(x)
 
         return pos, ori, x
 
@@ -422,7 +439,210 @@ class MobileNetV3(nn.Module):
         return position, rotation, x_fully
 
 
+class ResNet34Hourglass(nn.Module):
+    def __init__(self, base_model, fixed_weight = False, sum_mode = True, dropout_rate = 0.0, bayesian = False):
+        super(ResNet34Hourglass, self).__init__()
 
+        self.sum_mode = sum_mode
+        self.bayesian = bayesian
+        self.dropout_rate = dropout_rate
+
+        if fixed_weight:
+            for param in base_model.parameters():
+                param.requires_grad = False
+        # Encoding Blocks
+        self.init_block = nn.Sequential(*list(base_model.children())[:4])
+
+        self.res_block1 = base_model.layer1 # 64 * 56 * 56
+        self.res_block2 = base_model.layer2 # 128 * 28 * 28
+        self.res_block3 = base_model.layer3 # 256 * 14 * 14
+        self.res_block4 = base_model.layer4 # 512 * 7 * 7
+
+        # Decoding Blocks
+        if sum_mode:
+            self.deconv_block1 = nn.ConvTranspose2d(512, 256, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False, output_padding=1)
+            self.deconv_block2 = nn.ConvTranspose2d(256, 128, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False, output_padding=1)
+            self.deconv_block3 = nn.ConvTranspose2d(128, 64, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False, output_padding=1)
+            self.conv_block = nn.Conv2d(64, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+        else:
+            self.deconv_block1 = nn.ConvTranspose2d(512, 256, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False, output_padding=1)
+            self.deconv_block2 = nn.ConvTranspose2d(512, 128, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False, output_padding=1)
+            self.deconv_block3 = nn.ConvTranspose2d(256, 64, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False, output_padding=1)
+            self.conv_block = nn.Conv2d(128, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+
+        # Regressor
+        # Dimensionality reduction layer
+        self.fc_dim_reduce = nn.Sequential(
+            nn.Linear(56 * 56 * 32, 2048),
+            # nn.BatchNorm1d(2048)
+        )
+        # Translation vector prediction layer
+        self.fc_position = nn.Sequential(
+            nn.Linear(2048, 3),
+            # nn.BatchNorm1d(3)
+        )
+        # Rotation quaternion prediction layer
+        self.fc_rotation = nn.Sequential(
+            nn.Linear(2048, 4),
+            # nn.BatchNorm1d(4)
+        )
+
+        # Initialize Weights
+        init_modules = [self.deconv_block1, self.deconv_block2, self.deconv_block3, self.conv_block,
+                        self.fc_dim_reduce, self.fc_position, self.fc_rotation]
+
+        for module in init_modules:
+            if isinstance(module, nn.ConvTranspose2d) or isinstance(module, nn.Linear) or isinstance(module, nn.Conv3d):
+                nn.init.kaiming_normal_(module.weight)
+                if module.bias is not None:
+                    nn.init.constant_(module.bias, 0)
+
+
+    def forward(self, x):
+        # Conv
+        x = self.init_block(x)
+        x_res1 = self.res_block1(x)
+        x_res2 = self.res_block2(x_res1)
+        x_res3 = self.res_block3(x_res2)
+        x_res4 = self.res_block4(x_res3)
+
+        # Deconv
+        x_deconv1 = self.deconv_block1(x_res4)
+        if self.sum_mode:
+            x_deconv1 = x_res3 + x_deconv1
+        else:
+            x_deconv1 = torch.cat((x_res3, x_deconv1), dim=1)
+
+        x_deconv2 = self.deconv_block2(x_deconv1)
+        if self.sum_mode:
+            x_deconv2 = x_res2 + x_deconv2
+        else:
+            x_deconv2 = torch.cat((x_res2, x_deconv2), dim=1)
+
+        x_deconv3 = self.deconv_block3(x_deconv2)
+        if self.sum_mode:
+            x_deconv3 = x_res1 + x_deconv3
+        else:
+            x_deconv3 = torch.cat((x_res1, x_deconv3), dim=1)
+
+        x_conv = self.conv_block(x_deconv3)
+        x_linear = x_conv.view(x_conv.size(0), -1)
+        x_fully = self.fc_dim_reduce(x_linear)
+        x = F.relu(x_fully)
+
+        dropout_on = self.training or self.bayesian
+        if self.dropout_rate > 0:
+            x = F.dropout(x, p=self.dropout_rate, training = dropout_on)
+
+        position = self.fc_position(x)
+        rotation = self.fc_rotation(x)
+
+        return position, rotation, x_fully
+
+
+class MobileNetV3Hourglass(nn.Module):
+    def __init__(self, base_model, fixed_weight = False, sum_mode = True, dropout_rate = 0.0, bayesian = False):
+        super(MobileNetV3Hourglass, self).__init__()
+
+        self.sum_mode = sum_mode
+        self.bayesian = bayesian
+        self.dropout_rate = dropout_rate
+
+        # MobileNetV3 does not use `fc` but `classifier` for its final layers
+        # self.base_model = nn.Sequential(*list(base_model.children())[:-1])
+        self.features = base_model.features
+
+        if fixed_weight:
+            for param in  nn.Sequential(*list(self.features.children())[:-1]).parameters():
+                param.requires_grad = False
+
+
+
+        # We manually determine these cut points by examining the network architecture
+        # These indices represent the layers just before spatial reduction occurs
+        block_ends = [2, 4, 7, 13]  # Indices where feature size changes
+
+        # Splitting features into blocks
+        self.block1 = nn.Sequential(*self.features[:block_ends[0] + 1]) # 24 * 56 * 56
+        self.block2 = nn.Sequential(*self.features[block_ends[0] + 1:block_ends[1] + 1]) # 40 * 28 * 28
+        self.block3 = nn.Sequential(*self.features[block_ends[1] + 1:block_ends[2] + 1]) # 80 * 14 * 14
+        self.block4 = nn.Sequential(*self.features[block_ends[2] + 1:block_ends[3] + 1]) # 160 * 7 * 7
+
+        # Decoding Blocks
+        if sum_mode:
+            self.deconv_block1 = nn.ConvTranspose2d(160, 80, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False, output_padding=1)
+            self.deconv_block2 = nn.ConvTranspose2d(80, 40, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False, output_padding=1)
+            self.deconv_block3 = nn.ConvTranspose2d(40, 24, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False, output_padding=1)
+            self.conv_block = nn.Conv2d(24, 12, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+        else:
+            self.deconv_block1 = nn.ConvTranspose2d(160, 80, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False, output_padding=1)
+            self.deconv_block2 = nn.ConvTranspose2d(160, 40, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False, output_padding=1)
+            self.deconv_block3 = nn.ConvTranspose2d(80, 24, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False, output_padding=1)
+            self.conv_block = nn.Conv2d(48, 12, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+
+        # Regressor
+        # Dimensionality reduction layer
+        self.fc_dim_reduce = nn.Sequential(
+            nn.Linear(56 * 56 * 12, 1280),
+        )
+        # Translation vector prediction layer
+        self.fc_position = nn.Sequential(
+            nn.Linear(1280, 3),
+        )
+        # Rotation quaternion prediction layer
+        self.fc_rotation = nn.Sequential(
+            nn.Linear(1280, 4),
+        )
+
+        # Initialize Weights
+        init_modules = [self.deconv_block1, self.deconv_block2, self.deconv_block3, self.conv_block,
+                        self.fc_dim_reduce, self.fc_position, self.fc_rotation]
+
+        for module in init_modules:
+            if isinstance(module, nn.ConvTranspose2d) or isinstance(module, nn.Linear) or isinstance(module, nn.Conv3d):
+                nn.init.kaiming_normal_(module.weight)
+                if module.bias is not None:
+                    nn.init.constant_(module.bias, 0)
+
+    def forward(self, x):
+        x_1 = self.block1(x)
+        x_2 = self.block2(x_1)
+        x_3 = self.block3(x_2)
+        x_4 = self.block4(x_3)
+
+
+        # Deconv
+        x_deconv1 = self.deconv_block1(x_4)
+        if self.sum_mode:
+            x_deconv1 = x_3 + x_deconv1
+        else:
+            x_deconv1 = torch.cat((x_3, x_deconv1), dim=1)
+
+        x_deconv2 = self.deconv_block2(x_deconv1)
+        if self.sum_mode:
+            x_deconv2 = x_2 + x_deconv2
+        else:
+            x_deconv2 = torch.cat((x_2, x_deconv2), dim=1)
+
+        x_deconv3 = self.deconv_block3(x_deconv2)
+        if self.sum_mode:
+            x_deconv3 = x_1 + x_deconv3
+        else:
+            x_deconv3 = torch.cat((x_1, x_deconv3), dim=1)
+
+        x_conv = self.conv_block(x_deconv3)
+        x_linear = x_conv.view(x_conv.size(0), -1)
+        x_fully = self.fc_dim_reduce(x_linear)
+        x = F.relu(x_fully)
+
+        dropout_on = self.training or self.bayesian
+        if self.dropout_rate > 0:
+            x = F.dropout(x, p=self.dropout_rate, training=dropout_on)
+
+        position = self.fc_position(x)
+        rotation = self.fc_rotation(x)
+
+        return position, rotation, x_fully
 
 class ResNet34LSTM(nn.Module): # For streamlined coding style, which can be combined with ResNet34
     def __init__(self, base_model, fixed_weight = False, hidden_size = 256, dropout_rate = 0.0, bayesian = False):
@@ -492,3 +712,68 @@ class ResNet34LSTM(nn.Module): # For streamlined coding style, which can be comb
 
         return position, rotation, x_fully
 
+class MobileNetV3LSTM(nn.Module):
+    def __init__(self, base_model, fixed_weight=False, hidden_size = 256, dropout_rate=0.0, bayesian=False):
+        super(MobileNetV3LSTM, self).__init__()
+
+        self.bayesian = bayesian
+        self.dropout_rate = dropout_rate
+
+        # MobileNetV3 does not use `fc` but `classifier` for its final layers
+        if isinstance(base_model, models.MobileNetV3):
+            feat_in = base_model.classifier[0].in_features
+            # Modify the base model to not include the final classifier
+            self.base_model = nn.Sequential(*list(base_model.children())[:-1])
+        else:
+            # Fallback for other model types if necessary
+            feat_in = base_model.fc.in_features
+            self.base_model = nn.Sequential(*list(base_model.children())[:-1])
+
+        if fixed_weight:
+            for param in self.base_model.parameters():
+                param.requires_grad = False
+
+        # Replace the last layer
+        self.fc_last = nn.Linear(feat_in, 1280, bias=True)
+        self.lstm_l2r = nn.LSTM(input_size = 40, hidden_size = hidden_size, bidirectional=True, batch_first=True)
+        self.lstm_u2d = nn.LSTM(input_size = 32, hidden_size = hidden_size, bidirectional=True, batch_first=True)
+        self.fc_position = nn.Linear(hidden_size * 4, 3, bias=True)
+        self.fc_rotation = nn.Linear(hidden_size * 4, 4, bias=True)
+
+        init_modules = [self.fc_last, self.lstm_l2r, self.lstm_u2d, self.fc_position, self.fc_rotation]
+
+        for module in init_modules:
+            if isinstance(module, nn.Conv2d) or isinstance(module, nn.Linear):
+                nn.init.kaiming_normal_(module.weight)
+                if module.bias is not None:
+                    nn.init.constant_(module.bias, 0)
+            elif isinstance(module, nn.LSTM):
+                for name, param in module.named_parameters():
+                    if 'bias' in name:
+                        nn.init.constant_(param, 0.0)
+                    elif 'weight' in name:
+                        nn.init.xavier_normal_(param)
+
+    def forward(self, x):
+        x = self.base_model(x)
+        x = torch.flatten(x, 1)  # Flatten the output for the FC layer
+        x_fully = self.fc_last(x)
+        x = F.relu(x_fully)
+
+        x = x.view(x.size(0), 32, -1)  # --> (batch_size, 32, 40)
+        _, (hidden_state_l2r, _) = self.lstm_l2r(x.permute(0, 1, 2))  # (2, batch_size, hidded_size)
+        _, (hidden_state_u2d, _) = self.lstm_u2d(x.permute(0, 2, 1))  # (2, batch_size, hidded_size)
+
+        x = torch.cat((hidden_state_l2r[0, :, :],
+                       hidden_state_l2r[1, :, :],
+                       hidden_state_u2d[0, :, :],
+                       hidden_state_u2d[1, :, :]), 1)
+
+        dropout_on = self.training or self.bayesian
+        if self.dropout_rate > 0:
+            x = F.dropout(x, p=self.dropout_rate, training=dropout_on)
+
+        position = self.fc_position(x)
+        rotation = self.fc_rotation(x)
+
+        return position, rotation, x_fully
