@@ -80,21 +80,30 @@ def plot2D_plane(a, b, c, d):
     surf = ax.plot_surface(X, Y, Z)
 
 if __name__ == "__main__":
-    # crop_BASEMENT_low.jpeg
-    # crop_LOWER-LEVEL_low.jpeg
-    # crop_LEVEL-ONE_low.jpeg
-    # crop_LEVEL-TWO_low.jpeg
-    img = cv2.imread('/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Floor Plan/crop_LEVEL-ONE_low.jpeg')
-    r = 3
+    ###########################
+    ###### Change Floors ######
+    floor_name = "Level_1"  ###
+    ###########################
+    ###########################
+    if floor_name == "Basement":
+        img = cv2.imread('/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Floor Plan/crop_BASEMENT_low.jpeg')
+    elif floor_name == "Lower_Level":
+        img = cv2.imread('/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Floor Plan/crop_LOWER-LEVEL_low.jpeg')
+    elif floor_name == "Level_1":
+        img = cv2.imread('/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Floor Plan/crop_LEVEL-ONE_low.jpeg')
+    elif floor_name == "Level_2":
+        img = cv2.imread('/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Floor Plan/crop_LEVEL-TWO_low.jpeg')
+    r = 4
     ### BGR
-    color = (255, 133, 233)
+    color = (215, 155, 66)
     # (133, 173, 235) # orange
     # (149, 228, 177) # green
     # (255, 133, 233) # purple
-    folder_path = sorted(glob.glob("/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Localization/data/HST_video/Jun/Floor_2/20*"))
-    alpha = 0.5 # Transparency factor.
+    # (177, 235, 133) # blue
+    folder_path = sorted(glob.glob("/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Localization/data/HST_video/Jun/test/" + floor_name + "/20*"))
+    alpha = 0.6 # Transparency factor.
     all_image_num = 0
-    for proj_path in folder_path[0:78]:
+    for proj_path in folder_path[24:25]:
         print(f"Working at {proj_path}...")
         overlay = img.copy()
         cam2world_lines = open(os.path.join(proj_path, "camera2world_6DoF.txt"), 'r').readlines()
@@ -107,7 +116,6 @@ if __name__ == "__main__":
                 iqw, iqx, iqy, iqz, itx, ity, itz = float(iqw), float(iqx), float(iqy), float(iqz), float(itx), float(ity), float(itz)
                 cv2.circle(overlay, (int(ity), int(itx)), r, color, -1)
         img = cv2.addWeighted(overlay, alpha, img, 1 - alpha, 0)
-
 
 
     cv2.imshow("some", img)

@@ -8,17 +8,21 @@ import matplotlib.pyplot as plt
 from PIL import Image
 from kornia.geometry.conversions import rotation_matrix_to_quaternion, quaternion_to_rotation_matrix
 
-
+def print_feature_size(my_model, dummy_input):
+    features = my_model.features
+    for i, feature in enumerate(features):
+        output = feature(dummy_input)
+        print(f"Layer {i}: feature size from {dummy_input.shape} to {output.shape}")
+        dummy_input = output  # Feed the output back as the next input
 
 def analyze_block_transitions(my_model, dummy_input):
     features = my_model.features
     current_size = dummy_input.shape[-1]
-
     for i, feature in enumerate(features):
         output = feature(dummy_input)
         new_size = output.shape[-1]
         if new_size < current_size:
-            print(f"Block {output.shape} transition at layer {i}, size reduced from {current_size} to {new_size}")
+            print(f"Block {output.shape} transition at layer {i}, size reduced from {dummy_input.shape} to {output.shape}")
             current_size = new_size
         dummy_input = output  # Feed the output back as the next input
 
@@ -27,6 +31,7 @@ dummy_input = torch.rand(1, 3, 224, 224)
 # weights = MobileNet_V3_Large_Weights.IMAGENET1K_V1
 my_model_1 = models.mobilenet_v3_large()
 
+print_feature_size(my_model_1, dummy_input)
 analyze_block_transitions(my_model_1, dummy_input)
 
 my_resnet_model = models.resnet34()

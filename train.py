@@ -33,6 +33,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--mode', type=str, default='train', choices=['train', 'test'])
+    parser.add_argument('--use_euler6', type=bool, default=False)
     parser.add_argument('--bayesian', type=bool, default=False, help='Bayesian Posenet, True or False')
     parser.add_argument('--geometric', type=bool, default=False, help='Geometric Posenet, True or False')
     parser.add_argument('--sequential_mode', type=str, default=None,
@@ -42,10 +43,13 @@ if __name__ == '__main__':
     parser.add_argument('--sx', type=float, default=0.0)
     parser.add_argument('--sq', type=float, default=-5.0)
     parser.add_argument('--learn_beta', type=bool, default=False)
-    parser.add_argument('--dropout_rate', type=float, default=0.0, help='range 0.0 to 1.0')
+    parser.add_argument('--dropout_rate', type=float, default=0.1, help='range 0.0 to 1.0')
     parser.add_argument('--shuffle', type=bool, default=True)
     parser.add_argument('--fixed_weight', type=bool, default=False)
-    parser.add_argument('--model', type=str, default='Resnet50', choices=['Googlenet', 'Resnet', 'Resnet34', 'Resnet50', 'Resnet101', 'Renet34Simple', 'MobilenetV3', 'Resnet34lstm', 'MobilenetV3lstm', 'Resnet34hourglass', "MobilenetV3hourglass"])
+    parser.add_argument('--model', type=str, default='Resnet50', choices=['Googlenet', 'Resnet', 'Resnet34', 'Resnet50', 'Resnet101', 'Renet34Simple', 'MobilenetV3',
+                                                                          'Resnet34lstm', 'MobilenetV3lstm',
+                                                                          'Resnet34hourglass', "MobilenetV3hourglass",
+                                                                          "Branchresnet34", "BranchmobilenetV3"])
     parser.add_argument('--pretrained_model', type=str, default=None)
 
     # parser.add_argument('--proj_path', type=str, default='/mnt/data2/image_based_localization/posenet/Street')
@@ -67,7 +71,7 @@ if __name__ == '__main__':
     # Training settings
     parser.add_argument('--gpu_ids', type=str, default='0', help='gpu ids: e.g. 0 1 2 3') # selection of gpu id (single gpu)
     # parser.add_argument('--dataset', type=str, default='Oxford', choices=['NCLT', 'VKITTI', 'Oxford', 'QUT'])
-    parser.add_argument('--num_epochs', type=int, default=300)
+    parser.add_argument('--num_epochs', type=int, default=200)
     parser.add_argument('--num_epochs_decay', type=int, default=50)
     parser.add_argument('--batch_size', type=int, default=16) # 16
     parser.add_argument('--num_workers', type=int, default=1)

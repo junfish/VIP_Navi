@@ -26,7 +26,10 @@ class Solver():
         self.device = torch.device("cuda:" + self.config.gpu_ids if torch.cuda.is_available() else "cpu")
 
 
-        self.model = model_parser(self.config.model, self.config.fixed_weight, self.config.dropout_rate,
+        self.model = model_parser(self.config.model,
+                                  self.config.use_euler6,
+                                  self.config.fixed_weight,
+                                  self.config.dropout_rate,
                                   self.config.bayesian)
 
         if self.config.geometric:
@@ -47,6 +50,8 @@ class Solver():
 
         if self.config.pretrained_model:
             self.load_pretrained_model()
+            self.model_save_path = self.config.pretrained_model.split('/')[1]
+            print("Model (continued training) save path: " + self.model_save_path)
 
 
         if self.config.sequential_mode:
@@ -73,9 +78,9 @@ class Solver():
             assert 'Unvalid sequential mode'
 
     def load_pretrained_model(self):
-        model_path = self.model_save_path + '/%s_net.pth' % self.config.pretrained_model
-        self.model.load_state_dict(torch.load(model_path))
-        print('Load pretrained network: ', model_path)
+        # model_path = self.model_save_path + '/%s_net.pth' % self.config.pretrained_model
+        self.model.load_state_dict(torch.load(self.config.pretrained_model))
+        print('Load pretrained network: ', self.config.pretrained_model)
 
     def print_network(self, model, name):
         num_params = 0
@@ -102,7 +107,7 @@ class Solver():
             optimizer = optim.Adam([{'params': self.model.parameters()},
                                     {'params': [self.criterion.sx, self.criterion.sq]}],
                                    lr = self.config.lr,
-                                   weight_decay =0.0005)
+                                   weight_decay = 0.0005)
         else:
             optimizer = optim.Adam(self.model.parameters(),
                                    lr=self.config.lr,
@@ -136,7 +141,10 @@ class Solver():
         # For pretrained network
         start_epoch = 0
         if self.config.pretrained_model:
-            start_epoch = int(self.config.pretrained_model)
+            if "best_net" in self.config.pretrained_model:
+                start_epoch = 15
+            else:
+                start_epoch = int(self.config.pretrained_model.split('/')[-1].split('_')[0])
 
         # Pre-define variables to get the best model
         best_train_loss = 10000
@@ -195,6 +203,9 @@ class Solver():
                         ori_true = poses[:, :4]
 
                         ori_true = F.normalize(ori_true, p=2, dim=1)
+                        if self.config.use_euler6:
+                            ori_true = quaternion_to_euler6(ori_true)
+
                         loss, _, _ = self.criterion(pos_out, ori_out, pos_true, ori_true)
                         loss_print = self.criterion.loss_print[0]
                         loss_pos_print = self.criterion.loss_print[1]
@@ -359,7 +370,7 @@ class Solver():
             os.makedirs(self.test_save_path + '/' + self.config.train_time)
         f = open(self.test_save_path + '/' + self.config.train_time + '/test_result.csv', 'w')
 
-        device = torch.device("cuda:" + self.config.gpu_ids if torch.cuda.is_available() else "cpu")
+        # device = torch.device("cuda:" + self.config.gpu_ids if torch.cuda.is_available() else "cpu")
 
         self.model = self.model.to(self.device)
         self.model.eval()
@@ -390,36 +401,6 @@ class Solver():
             inputs = batch['image']
             inputs = inputs.to(self.device)
 
-            # forward
-            if self.config.bayesian:
-                num_bayesian_test = 100
-                pos_array = torch.Tensor(num_bayesian_test, 3)
-                ori_array = torch.Tensor(num_bayesian_test, 4)
-
-                for i in range(num_bayesian_test):
-                    pos_single, ori_single, _ = self.model(inputs)
-                    pos_array[i, :] = pos_single
-                    ori_array[i, :] = F.normalize(ori_single, p=2, dim=1)
-
-                pose_quat = torch.cat((ori_array, pos_array), 1).detach().cpu().numpy()
-                pred_mean, pred_var = fit_gaussian(pose_quat)
-
-                pos_var = np.sum(pred_var[4:])
-                ori_var = np.sum(pred_var[:4])
-
-                pos_out = pred_mean[4:]
-                ori_out = pred_mean[:4]
-            else:
-                pos_out, ori_out, _ = self.model(inputs)
-                pos_out = pos_out.squeeze(0).detach().cpu().numpy()
-                ori_out = F.normalize(ori_out, p=2, dim=1)
-                ori_out = ori_out.squeeze(0).detach().cpu().numpy()
-                # ori_out = quat_to_euler(ori_out)
-                # print('pos out', pos_out)
-                # print('ori_out', ori_out)
-            #
-            # pos_true = data[:, :3].squeeze(0).numpy()
-            # ori_true = data[:, 3:].squeeze(0).numpy()
             if self.config.geometric:
                 pos_true, ori_true = batch['w_t_c'].squeeze(0).numpy(), batch['c_q_w'].squeeze(0).numpy()
                 ori_true[1:] *= -1
@@ -429,18 +410,63 @@ class Solver():
                 pos_true = poses[:, 4:].squeeze(0).numpy()
                 ori_true = poses[:, :4].squeeze(0).numpy()
 
-            # ori_true = quat_to_euler(ori_true)
-            # print('pos true', pos_true)
-            # print('ori true', ori_true)
-            loss_pos_print = array_dist(pos_out, pos_true)
-            # loss_ori_print = array_dist(ori_out, ori_true)
-            loss_ori_print = quat_dist(ori_out, ori_true)
+            # forward
+            if self.config.bayesian:
+                num_bayesian_test = 100
+                pos_array = torch.Tensor(num_bayesian_test, 3)
+                ori_array = torch.Tensor(num_bayesian_test, 4)
 
-            true_list.append(np.hstack((pos_true, ori_true)))
-            
-            # if loss_pos_print < 20:
-            #     estim_list.append(np.hstack((pos_out, ori_out)))
-            estim_list.append(np.hstack((pos_out, ori_out)))
+                error_array = torch.Tensor(num_bayesian_test, 2)
+
+                for j in range(num_bayesian_test):
+                    pos_single, ori_single, _ = self.model(inputs)
+                    pos_array[j, :] = pos_single
+                    ori_single = F.normalize(ori_single, p=2, dim=1)
+                    ori_array[j, :] = ori_single
+
+                    pos_single = pos_single.squeeze(0).detach().cpu().numpy()
+                    ori_single = euler6_to_quaternion(ori_single.squeeze(0).detach().cpu().numpy()) if self.config.use_euler6 else ori_single.squeeze(0).detach().cpu().numpy()
+                    error_ori_single = quat_dist(ori_single, ori_true)
+                    error_array[j, 0] = torch.tensor(error_ori_single)
+
+                    error_pos_single = array_dist(pos_single, pos_true)
+                    error_array[j, 1] = torch.tensor(error_pos_single)
+
+                pose_quat = torch.cat((ori_array, pos_array, error_array), 1).detach().cpu().numpy()
+                pred_mean, pred_var = fit_gaussian(pose_quat)
+
+                pos_var = pred_var[-1]
+                ori_var = pred_var[-2]
+
+                # loss_pos_print = pred_mean[-1]
+                # loss_ori_print = pred_mean[-2]
+
+                pos_out, ori_out = pred_mean[4:7], pred_mean[:4]
+                loss_pos_print = array_dist(pos_out, pos_true)
+                loss_ori_print = quat_dist(ori_out, ori_true)
+
+                true_list.append(np.hstack((pos_true, ori_true)))
+                estim_list.append(np.hstack((pos_out, ori_out)))
+
+            else:
+                pos_out, ori_out, _ = self.model(inputs)
+                pos_out = pos_out.squeeze(0).detach().cpu().numpy()
+                ori_out = F.normalize(ori_out, p=2, dim=1)
+                ori_out = ori_out.squeeze(0).detach().cpu().numpy()
+                # ori_out = quat_to_euler(ori_out)
+                # print('pos out', pos_out)
+                # print('ori_out', ori_out)
+
+
+                loss_pos_print = array_dist(pos_out, pos_true)
+                if self.config.use_euler6:
+                    ori_out = euler6_to_quaternion(ori_out)
+                loss_ori_print = quat_dist(ori_out, ori_true)
+
+                true_list.append(np.hstack((pos_true, ori_true)))
+                # if loss_pos_print < 20:
+                #     estim_list.append(np.hstack((pos_out, ori_out)))
+                estim_list.append(np.hstack((pos_out, ori_out)))
 
             # ori_out = F.normalize(ori_out, p=2, dim=1)
             # ori_true = F.normalize(ori_true, p=2, dim=1)
@@ -466,8 +492,8 @@ class Solver():
 
 
             if self.config.bayesian:
-                print('{}th Error: pos error {:.3f} / ori error {:.3f}'.format(i, loss_pos_print, loss_ori_print))
-                print('{}th std: pos / ori', pos_var, ori_var)
+                print('{} th Error: pos error {:.3f} / ori error {:.3f}'.format(i, loss_pos_print, loss_ori_print))
+                print('{} th std: pos std {:.3f} / ori std {:.3f}'.format(i, np.sqrt(pos_var), np.sqrt(ori_var)))
                 f.write('{},{},{},{}\n'.format(loss_pos_print, loss_ori_print, pos_var, ori_var))
 
             else:

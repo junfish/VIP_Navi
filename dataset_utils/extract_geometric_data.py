@@ -20,8 +20,8 @@ transform = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
 
-floor_name = "Basement"
-train_test_split = 60
+floor_name = "Lower_Level"
+train_test_split = 90
 floor_path = "/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Localization/data/HST_video/Jun/" + floor_name
 colmap_folder_path = sorted(glob.glob(floor_path + "/20*"))
 

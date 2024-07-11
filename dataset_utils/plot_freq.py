@@ -4,13 +4,17 @@ import pandas as pd
 import glob
 from PIL import Image
 
-base_folder_path = sorted(glob.glob("../../data/HST_video/Jun/Basement/20*"))
+base_folder_path = sorted(glob.glob("/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Localization/data/HST_video/Jun/Basement/20*") +
+                          glob.glob("/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Localization/data/HST_video/Jun/test/Basement/20*"))
 print("Basement: %s files: " % str(len(base_folder_path)))
-lower_folder_path = sorted(glob.glob("../../data/HST_video/Jun/Lower_Floor/20*"))
+lower_folder_path = sorted(glob.glob("/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Localization/data/HST_video/Jun/Lower_Level/20*") +
+                           glob.glob("/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Localization/data/HST_video/Jun/test/Lower_Level/20*"))
 print("Lower level: %s files: " % str(len(lower_folder_path)))
-floor_1_folder_path = sorted(glob.glob("../../data/HST_video/Jun/Floor_2/20*"))
+floor_1_folder_path = sorted(glob.glob("/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Localization/data/HST_video/Jun/Level_1/20*") +
+                           glob.glob("/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Localization/data/HST_video/Jun/test/Level_1/20*"))
 print("Floor 1: %s files: " % str(len(floor_1_folder_path)))
-floor_2_folder_path = sorted(glob.glob("../../data/HST_video/Jun/Floor_3/20*"))
+floor_2_folder_path = sorted(glob.glob("/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Localization/data/HST_video/Jun/Level_2/20*") +
+                           glob.glob("/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Localization/data/HST_video/Jun/test/Level_2/20*"))
 print("Floor 2: %s files: " % str(len(floor_2_folder_path)))
 
 time_spread = np.zeros((4,24))
@@ -18,7 +22,7 @@ hand_stat = np.zeros((4,4))
 
 
 
-dates = pd.date_range(start = "12/05/2023", end = "03/31/2024")
+dates = pd.date_range(start = "12/05/2023", end = "06/12/2024")
 data = np.zeros(dates.size)
 
 df = pd.DataFrame({'Date': dates, 'Freq': data})
@@ -125,12 +129,13 @@ plt.xlabel('Time of the Day', fontsize=14)
 plt.xticks(fontsize=12)
 plt.yticks(fontsize=12)
 plt.title('Contribution Graph', fontsize=16)
+plt.savefig('hour.png', dpi=600, bbox_inches='tight')
 plt.show()
 
 
 # Define the start and end date for the data range
 start_date = pd.to_datetime("2023-12-05")
-end_date = pd.to_datetime("2024-03-31")
+end_date = pd.to_datetime("2024-06-12")
 
 
 # Calculate the difference in days from the start date and derive the week index
@@ -147,7 +152,7 @@ for index, row in df.iterrows():
     date_spread[row['WeekIndex'], row['DayOfWeek']] = row['Freq']
 
 # Plotting
-plt.figure(figsize=(12, 6))
+plt.figure(figsize=(16, 6))
 plt.imshow(date_spread.T, cmap='YlGn', aspect='auto', interpolation='nearest') # YlGn # Greens
 cbar = plt.colorbar()
 cbar.set_label(label='Contributions (#Video)', size=14)
@@ -157,9 +162,10 @@ plt.ylabel('Days of the Week', fontsize=14)
 plt.xticks(ticks=range(num_weeks), labels=[f'W{w+1}' for w in range(num_weeks)])
 plt.xticks(fontsize=12)
 plt.yticks(fontsize=12)
-plt.xlabel('Week Index from December 5, 2023, to March 31, 2024', fontsize=14)
+plt.xlabel('Week Index from December 5, 2023, to June 5, 2024', fontsize=14)
 plt.title('Contribution Graph', fontsize=16)
 plt.tight_layout()
+plt.savefig('weekday.png', dpi=600, bbox_inches='tight')
 plt.show()
 
 
@@ -185,9 +191,10 @@ for i, floor in enumerate(hand_stat):
 legend = fig.legend(wedges, sections, loc="lower right", bbox_to_anchor=(1, 0), bbox_transform=plt.gcf().transFigure, fontsize=12, title='Capture Styles')
 legend.get_title().set_fontsize(16)  # Setting a different fontsize for the title
 # Adjust the layout to prevent overlap
-plt.tight_layout()
-
+# plt.tight_layout()
+plt.savefig('dji.png', dpi=600, bbox_inches='tight')
 plt.show()
+
 
 
 

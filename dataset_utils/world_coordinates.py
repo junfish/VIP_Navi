@@ -70,14 +70,22 @@ def plot3d(x_list, y_list, z_list, q_list, dest_dir):
     ax.set_zlim([-40, 100])
     # plt.show()
     plt.savefig(os.path.join(dest_dir, 'path_stem.png'))
+    plt.close(fig)
 
 
 if __name__ == "__main__":
 
-    folder_path = sorted(glob.glob("/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Localization/data/HST_video/Jun/Floor_2/20*")) # read and sort all colmap projects (e.g., ./Basement/20231220_141254_proj)
+    ###########################
+    ###### Change Floors ######
+    floor_name = "Level_1"  ###
+    ###########################
+    ###########################
+    # read and sort all colmap projects (e.g., ./Basement/20231220_141254_proj)
+    folder_path = sorted(glob.glob("/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Localization/data/HST_video/Jun/test/" + floor_name + "/20*"))
 
-    for proj_path in folder_path[9:10]: # for-loop all colmap projects
-        print(f"Working at {proj_path}...")
+    for proj_index, proj_path in enumerate(folder_path[24:25]): # for-loop all colmap projects
+
+        print(f"Working at {proj_index}-th project folder: {proj_path}...")
         proj_name = proj_path.split('/')[-1] # obtain the folder name, e.g., 20231220_141254_proj
         file2read = open(os.path.join(proj_path, "images.txt"), 'r') # read the image.txt (easily exported as txt by colmap)
         # For tidy publishing purposes, the file image.txt has been relocated to the directory 20231220_141254_proj/sparse/geo/images.txt. Please remember to change the file path to your own directory.

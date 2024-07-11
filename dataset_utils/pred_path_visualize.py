@@ -81,23 +81,30 @@ def plot2D_plane(a, b, c, d):
 
 if __name__ == "__main__":
     # crop_LOWER-LEVEL_low.jpeg
-    img = cv2.imread('/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Floor Plan/crop_BASEMENT_low.jpeg')
+
+    purple_bgr = (255, 133, 233)  # lower
+    green_bgr = (149, 228, 177)  # basement
+    orange_bgr = (163, 203, 235)  # 2
+    blue_bgr = (215, 155, 66)  # 1
+    red_bgr = (128, 128, 240) # pred
+
+    img = cv2.imread('/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Floor Plan/crop_LEVEL-TWO_low.jpeg')
 
     test_image_path = []
-    test_image_lines = open("../../data/HST_video/Jun/test/Basement/image_test_5.txt", 'r').readlines()
+    test_image_lines = open("/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Localization/data/HST_video/Jun/test/Level_2/image_test_20.txt", 'r').readlines()
     for test_image_line_idx, test_image_line in enumerate(test_image_lines):
         if test_image_line_idx >= 2:
-            test_image_path.append(test_image_line.split(',')[1].strip())
+            test_image_path.append(test_image_line.split(',')[0].strip())
 
-    ground_truth = open("/home/juy220/PycharmProjects/PoseNet-Pytorch/test_Resnet34_Basement/2024-04-10-23:13:11/true.csv", 'r').readlines()
-    predictions = open("/home/juy220/PycharmProjects/PoseNet-Pytorch/test_Resnet34_Basement/2024-04-10-23:13:11/estim.csv", 'r').readlines()
+    ground_truth = open("/home/juy220/PycharmProjects/VIP_Navi/test_Resnet34_Level_2/2024-05-10-13:45:25/true.csv", 'r').readlines()
+    predictions = open("/home/juy220/PycharmProjects/VIP_Navi/test_Resnet34_Level_2/2024-05-10-13:45:25/estim.csv", 'r').readlines()
 
-    r = 5
+    r = 3
     truth_color = (255, 133, 233)
     pred_color = (155, 233, 133)
-    folder_path = sorted(glob.glob("../../data/HST_video/Jun/test/Basement/20*"))
+    folder_path = sorted(glob.glob("/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Localization/data/HST_video/Jun/test/Level_2/20*"))
     alpha = 1 # Transparency factor.
-    for proj_path in folder_path[2:3]:
+    for proj_path in folder_path[18:19]:
         overlay = img.copy()
         cam2world_lines = open(os.path.join(proj_path, "camera2world_6DoF.txt"), 'r').readlines()
         print("%3.0f images are annotated in this project." % (len(cam2world_lines) - 1))
@@ -109,8 +116,8 @@ if __name__ == "__main__":
                 # iqw, iqx, iqy, iqz, itx, ity, itz = float(iqw), float(iqx), float(iqy), float(iqz), float(itx), float(ity), float(itz)
                 x_truth, y_truth, z_truth = ground_truth[test_image_index].split(',')[:3]
                 x_pred, y_pred, z_pred = predictions[test_image_index].split(',')[:3]
-                cv2.circle(overlay, (int(float(y_truth)), int(float(x_truth))), r, truth_color, -1)
-                cv2.circle(overlay, (int(float(y_pred)), int(float(x_pred))), r, pred_color, -1)
+                cv2.circle(overlay, (int(float(y_truth)), int(float(x_truth))), r, orange_bgr, -1)
+                cv2.circle(overlay, (int(float(y_pred)), int(float(x_pred))), r, red_bgr, -1)
         img = cv2.addWeighted(overlay, alpha, img, 1 - alpha, 0)
 
 

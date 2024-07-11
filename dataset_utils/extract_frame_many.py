@@ -38,10 +38,10 @@ def video2img(video_path, dest_dir, pad = False, time_intvl = 1):
                 # cv2.ROTATE_180 (DJI horizaontal)
                 # cv2.ROTATE_90_CLOCKWISE (HAND vertical)
                 # cv2.ROTATE_90_COUNTERCLOCKWISE (DJI vertical)
-                frame = cv2.rotate(frame, cv2.ROTATE_180)
+                # frame = cv2.rotate(frame, cv2.ROTATE_180)
                 # ubuntu
-                # DJI vertical: cv2.ROTATE_180
-                # HAND vertical: cv2.ROTATE_180
+                # DJI vertical: None
+                # HAND vertical: None
                 # DJI horizontal: None
                 # HAND horizontal: None
                 cv2.imwrite(os.path.join(dest_dir, dest_dir.split("/")[-1] + "_frame_%05.1fs.jpg") % time_stamp, frame)
@@ -61,13 +61,20 @@ if __name__ == "__main__":
     # file_name_list= ['20240301_002758', '20240301_003050', '20240301_003422', '20240301_003629', '20240303_000805', '20240303_001013', '20240303_001227',
     #                  '20240303_001602', '20240305_101535', '20240305_101757', '20240314_235122', '20240314_235334', '20240316_220837', '20240316_221120',
     #                  '20240316_221350', '20240326_213822', '20240326_214038', '20240326_214245', '20240222_121220']
-    file_name_list = ['20240502_171717', '20240502_165954', '20240502_165046', '20240502_172646', '20240502_171236',
-                      '20240502_170813', '20240502_165525', '20240502_173104', '20240502_170358', '20240502_172040']
+    file_name_list = ['20240604_181202', '20240604_181610', '20240604_182151', '20240604_182609', '20240605_010606', '20240605_010952', '20240605_105220', '20240605_105632', '20240605_110144', '20240605_110520', '20240605_111006', '20240605_111413']
     for file_name in file_name_list:
-        video_path = "./HST_video/Jun/" + floor_name + "/" + file_name + "_proj/DJI_" + file_name + ".MP4"
-        dest_dir = "./HST_video/Jun/" + floor_name + '/' + file_name + "_proj/DJI_" + file_name
+        video_path = "/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Localization/data/HST_video/Jun/" + floor_name + "/" + file_name + "_proj/HAND_" + file_name + ".MOV"
+        dest_dir = "/data/juy220/LU Student Dropbox/Jun Yu/_Vinod/Indoor_Navi/Localization/data/HST_video/Jun/" + floor_name + '/' + file_name + "_proj/HAND_" + file_name
         video2img(video_path, dest_dir, pad = False, time_intvl = 0.26)
-        # 0.29: 17
-        # 0.27, 0.28: 16
+        # 0.05: 2
+        # 0.20: 11
+        # 0.21: 12
+        # 0.22: 13
+        # 0.23: 13
+        # 0.24: 14
+        # 0.25: 14
         # 0.26: 15
+        # 0.27: 16
+        # 0.28: 16
+        # 0.29: 17
     # video2img(video_path, dest_dir, pad = True, time_intvl = 0.05)
