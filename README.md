@@ -14,5 +14,5 @@ by ACCESS Lab at the Lehigh University
 
 ### A Short Introduction
 
-This project aims to develop an image-centric application for accessible and inclusive indoor navigation. Our focus is on addressing the most challenging scenario: individuals who are visually impaired and unable to see their surroundings. From this starting point, the application will infer their location, guide them to their destinations, and inform them about their surroundings. GLHF!
+This project aims to develop an image-centric application for accessible and inclusive indoor navigation. Our focus is on addressing the most challenging scenario: individuals who are visually impaired and unable to see their surroundings. From this starting point, the application will infer their location, guide them to their destinations, and inform them about their surroundings. GLHF. All of us!
 
