@@ -1,6 +1,6 @@
 # NaVIP: An Image-Centric Indoor <ins>Navi</ins>gation Solution for <ins>V</ins>isually <ins>I</ins>mpaired <ins>P</ins>eople
 
-Jun Yu, Yifan Zhang, Badrinadh Aila, Vinod Namboodiri
+[Jun Yu](https://scholar.google.com/citations?user=fh1iSyAAAAAJ&hl=en), Yifan Zhang, Badrinadh Aila, [Vinod Namboodiri](https://engineering.lehigh.edu/faculty/vinod-namboodiri)
 
 by ACCESS Lab at the Lehigh University
 
